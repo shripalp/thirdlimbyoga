@@ -1,4 +1,5 @@
-import Button from "../components/Button";
+import Button from "@/components/Button";
+
 
 function BenefitCard({ title, text }) {
   return (
