@@ -35,6 +35,23 @@ export default function MembersPage() {
         <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
           <p className="font-semibold text-gray-900">You’re active ✅</p>
           <p className="mt-2 text-gray-600">Join your live class on Microsoft Teams:</p>
+          <button
+  className="mt-4 rounded-md border border-primary px-5 py-3 text-primary hover:bg-primary hover:text-white"
+  onClick={async () => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    const res = await fetch("/api/stripe/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    const data = await res.json();
+    window.location.href = data.url;
+  }}
+>
+  Manage billing
+</button>
+
           <TeamsLink />
         </div>
       ) : (
