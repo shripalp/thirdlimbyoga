@@ -24,7 +24,7 @@ export default function PricingPage() {
     <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-3xl font-bold text-primary">Pricing</h1>
       <p className="mt-3 text-gray-600">
-        Simple monthly membership for live online classes.
+        Simple monthly membership for live online classes for $30 a month
       </p>
 
       <div className="mt-10 max-w-md rounded-2xl border bg-white p-8 shadow-sm">
