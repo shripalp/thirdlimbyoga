@@ -1,5 +1,7 @@
 import { client } from "@/sanity/client";
 
+export const dynamic = "force-dynamic"; // prevents build-time data collection crashing Hostinger
+
 const query = `*[_type == "scheduleItem"] | order(day asc, time asc){
   _id, title, day, time, isOnline, location, notes
 }`;
@@ -17,7 +19,17 @@ function groupByDay(items) {
 }
 
 export default async function SchedulePage() {
-  const items = await client.fetch(query);
+  let items = [];
+
+  try {
+    items = await client.fetch(query);
+    if (!Array.isArray(items)) items = [];
+  } catch (err) {
+    // If Sanity/env is misconfigured during build or runtime, don't crash the page
+    console.error("SchedulePage Sanity fetch failed:", err);
+    items = [];
+  }
+
   const grouped = groupByDay(items);
 
   return (
@@ -46,7 +58,9 @@ export default async function SchedulePage() {
                           {s.isOnline ? "Online (Teams)" : "In-person"}
                           {!s.isOnline && s.location ? ` • ${s.location}` : ""}
                         </p>
-                        {s.notes ? <p className="mt-1 text-xs text-gray-500">{s.notes}</p> : null}
+                        {s.notes ? (
+                          <p className="mt-1 text-xs text-gray-500">{s.notes}</p>
+                        ) : null}
                       </div>
                       <span className="shrink-0 rounded-full bg-secondary px-3 py-1 text-xs text-primary">
                         {s.time}
@@ -62,4 +76,3 @@ export default async function SchedulePage() {
     </main>
   );
 }
-
