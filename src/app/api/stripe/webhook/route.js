@@ -58,7 +58,7 @@ export async function POST(req) {
         console.error("❌ No customer email found on session/customer");
         return NextResponse.json({ received: true });
       }
-
+if (process.env.SEND_TEAMS_EMAIL === "true") {
       const sendResult = await resend.emails.send({
         from: process.env.EMAIL_FROM,
         to: email,
@@ -75,6 +75,7 @@ export async function POST(req) {
 
       console.log("📧 Resend send result:", sendResult);
     }
+}
 
     return NextResponse.json({ received: true });
   } catch (err) {
