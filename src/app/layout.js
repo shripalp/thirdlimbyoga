@@ -2,6 +2,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 import "./globals.css";
+import Providers from "./providers";
+
 
 export const metadata = {
   title: "Third Limb Yoga",
@@ -13,7 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="bg-white text-gray-900">
         <Navbar />
-        {children}
+        <Providers>{children}</Providers>
         <Footer />
       </body>
     </html>
