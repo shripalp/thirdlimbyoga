@@ -8,19 +8,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
 
-  adapter: PrismaAdapter(prisma),
+  logger: {
+    error(code, metadata) {
+      console.error("[nextauth][error]", code, metadata);
+    },
+    warn(code) {
+      console.warn("[nextauth][warn]", code);
+    },
+    debug(code, metadata) {
+      console.log("[nextauth][debug]", code, metadata);
+    },
+  },
 
+  adapter: PrismaAdapter(prisma),
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM,
     }),
   ],
-
   session: { strategy: "database" },
-
-  pages: {
-    signIn: "/members/login",
-    verifyRequest: "/members/check-email",
-  },
+  pages: { signIn: "/members/login", verifyRequest: "/members/check-email" },
 });
