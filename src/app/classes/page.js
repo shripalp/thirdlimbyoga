@@ -1,5 +1,7 @@
 import { client } from "@/sanity/client";
 
+export const revalidate = 60; // revalidate this page every 60 seconds
+
 const query = `*[_type == "class"] | order(title asc){
   _id, title, level, durationMin, shortDescription
 }`;
