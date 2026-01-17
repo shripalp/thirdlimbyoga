@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node -r ./loadEnv.js node_modules/next/dist/bin/next build",
+    "build": "dotenv -e .env -- next build",
     "lint": "eslint",
-    "start": "node -r ./loadEnv.js node_modules/next/dist/bin/next start -p $PORT",
+    "start": "dotenv -e .env -- next start -p $PORT",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -31,7 +31,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "prisma": "^6.19.2",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "dotenv-cli": "^7.4.2"
   },
   "engines": {
     "node": ">=18.0.0"
