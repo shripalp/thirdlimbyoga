@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 async function getMemberStatus(email) {
-  // simple DB lookup (we’ll keep it minimal)
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
@@ -41,7 +40,6 @@ export default async function MembersPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    // not logged in
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="text-3xl font-bold text-primary">Members</h1>
