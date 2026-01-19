@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx prisma generate && next build",
     "lint": "eslint",
     "start": "next start -p $PORT"
-    
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -28,11 +27,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "dotenv-cli": "^7.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "prisma": "^6.19.2",
-    "tailwindcss": "^4",
-    "dotenv-cli": "^7.4.2"
+    "tailwindcss": "^4"
   },
   "engines": {
     "node": ">=18.0.0"
