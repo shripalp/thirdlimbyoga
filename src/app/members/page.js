@@ -1,3 +1,4 @@
+// src/app/members/page.js
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 
@@ -30,7 +31,7 @@ export default async function MembersPage() {
         <h1 className="text-3xl font-bold text-primary">Members</h1>
 
         <p className="mt-3 text-gray-600">
-          Please sign in to access your online yoga classes.
+          Please sign in to access your online yoga classes and schedule.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -45,6 +46,28 @@ export default async function MembersPage() {
 
   const email = session.user.email;
 
+  // Call server-side status endpoint to check membership
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://thirdlimbyoga.com";
+
+  let isActive = false;
+  let statusError = null;
+
+  try {
+    const statusRes = await fetch(`${baseUrl}/api/members/status`, {
+      cache: "no-store",
+    });
+
+    if (!statusRes.ok) {
+      statusError = `Status check failed (${statusRes.status})`;
+    } else {
+      const status = await statusRes.json();
+      isActive = Boolean(status?.active);
+    }
+  } catch (e) {
+    statusError = "Status check failed (network error)";
+  }
+
   // ─────────────────────────────────────────────
   // LOGGED IN
   // ─────────────────────────────────────────────
@@ -55,7 +78,7 @@ export default async function MembersPage() {
         You’re logged in successfully.
       </div>
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-primary">Members</h1>
           <p className="mt-2 text-sm text-gray-600">
@@ -79,26 +102,75 @@ export default async function MembersPage() {
 
       <div className="mt-10 grid gap-6 md:grid-cols-3">
         {/* Main content */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="space-y-6 md:col-span-2">
+          {/* Membership status */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900">
-              Join your online class
+              Membership status
+            </h2>
+
+            {statusError ? (
+              <p className="mt-2 text-sm text-gray-600">
+                We couldn’t confirm your membership right now. Please refresh in
+                a moment.
+              </p>
+            ) : isActive ? (
+              <>
+                <p className="mt-2 text-sm text-gray-600">
+                  Your membership is active. Your class links are sent to your
+                  email.
+                </p>
+                <div className="mt-4">
+                  <ButtonLink href="/schedule">View Schedule</ButtonLink>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-gray-600">
+                  We don’t see an active membership for this email yet.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <ButtonLink href="/pricing">Join Online</ButtonLink>
+                  <ButtonLink href="/contact" variant="secondary">
+                    Contact support
+                  </ButtonLink>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* How to join */}
+          <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">
+              How to join your classes
+            </h2>
+
+            <p className="mt-3 text-sm text-gray-600">
+              Your live class links are sent to your email after you join.
+            </p>
+
+            <p className="mt-2 text-sm text-gray-600">
+              You don’t need to log in each time — simply open the email and
+              join the class directly.
+            </p>
+
+            <p className="mt-2 text-sm text-gray-600">
+              This page is here for your schedule and account access.
+            </p>
+          </div>
+
+          {/* Schedule access */}
+          <div className="rounded-2xl border bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Class schedule
             </h2>
 
             <p className="mt-2 text-sm text-gray-600">
-              You can join your live yoga classes using the link sent to your
-              email after checkout.
+              View upcoming live classes and timings.
             </p>
 
-            <p className="mt-2 text-sm text-gray-600">
-              You can also view the class schedule below.
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-4">
               <ButtonLink href="/schedule">View Schedule</ButtonLink>
-              <ButtonLink href="/contact" variant="secondary">
-                Need help?
-              </ButtonLink>
             </div>
           </div>
         </div>
