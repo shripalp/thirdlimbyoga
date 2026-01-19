@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "npx prisma migrate deploy && npx prisma generate && next build",
     "lint": "eslint",
     "start": "next start -p $PORT"
   },
