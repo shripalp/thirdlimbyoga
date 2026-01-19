@@ -1,32 +1,43 @@
 import NextAuth from "next-auth";
 import Resend from "next-auth/providers/resend";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: true,
+
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
 
-  logger: {
-    error(code, metadata) {
-      console.error("[nextauth][error]", code, metadata);
-    },
-    warn(code) {
-      console.warn("[nextauth][warn]", code);
-    },
-    debug(code, metadata) {
-      console.log("[nextauth][debug]", code, metadata);
-    },
+  // ✅ JWT-only sessions (NO database)
+  session: {
+    strategy: "jwt",
   },
 
-  adapter: PrismaAdapter(prisma),
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM,
     }),
   ],
-  session: { strategy: "database" },
-  pages: { signIn: "/members/login", verifyRequest: "/members/check-email" },
+
+  pages: {
+    signIn: "/members/login",
+    verifyRequest: "/members/check-email",
+  },
+
+  callbacks: {
+    async jwt({ token, user }) {
+      // When user logs in for the first time
+      if (user?.email) {
+        token.email = user.email;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (token?.email) {
+        session.user.email = token.email;
+      }
+      return session;
+    },
+  },
 });
