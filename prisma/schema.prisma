@@ -16,12 +16,12 @@ model User {
   email          String?   @unique
   emailVerified  DateTime?
   image          String?
+  stripeCustomerId String? @unique
 
   accounts       Account[]
   sessions       Session[]
 
   // Stripe integration (optional but recommended)
-  stripeCustomerId String?
   stripeSubscriptionId String?
   stripeSubscriptionStatus String?
 
