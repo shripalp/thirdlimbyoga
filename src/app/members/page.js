@@ -1,5 +1,6 @@
 // src/app/members/page.js
 import Link from "next/link";
+import ManageMembershipButton from "@/components/ManageMembershipButton";
 import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
 
@@ -138,6 +139,9 @@ export default async function MembersPage() {
                 </p>
                 <div className="mt-4">
                   <ButtonLink href="/schedule">View Schedule</ButtonLink>
+                </div>
+                <div className="mt-4 flex gap-3">
+                  <ManageMembershipButton />
                 </div>
               </>
             ) : (

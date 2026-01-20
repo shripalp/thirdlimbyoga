@@ -6,6 +6,7 @@ import { useState } from "react";
 const links = [
   { href: "/classes", label: "Classes" },
   { href: "/schedule", label: "Schedule" },
+  { href: "/members", label: "Members" }, // 👈 ADDED
   { href: "/pricing", label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ];
@@ -37,6 +38,7 @@ export default function Navbar() {
             </Link>
           ))}
 
+          {/* Primary CTA stays Join Online */}
           <Link
             href="/pricing"
             className="rounded-md bg-accent px-4 py-2 text-white hover:opacity-90"
@@ -84,4 +86,3 @@ export default function Navbar() {
     </header>
   );
 }
-
