@@ -1,8 +1,11 @@
 // src/app/members/page.js
 import Link from "next/link";
+import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
 
 export const dynamic = "force-dynamic";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 function ButtonLink({ href, children, variant = "primary" }) {
   const base =
@@ -19,6 +22,40 @@ function ButtonLink({ href, children, variant = "primary" }) {
   );
 }
 
+async function getMembershipStatus(email) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return { active: false, error: "Missing STRIPE_SECRET_KEY" };
+  }
+  if (!process.env.STRIPE_PRICE_ID) {
+    return { active: false, error: "Missing STRIPE_PRICE_ID" };
+  }
+
+  try {
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    const customer = customers.data?.[0];
+
+    if (!customer) return { active: false };
+
+    const subs = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: "all",
+      limit: 20,
+    });
+
+    const active = subs.data.some((sub) => {
+      const statusOk = sub.status === "active" || sub.status === "trialing";
+      const priceMatch = (sub.items?.data || []).some(
+        (item) => item?.price?.id === process.env.STRIPE_PRICE_ID
+      );
+      return statusOk && priceMatch;
+    });
+
+    return { active, customerId: customer.id };
+  } catch (e) {
+    return { active: false, error: e?.message || "Stripe error" };
+  }
+}
+
 export default async function MembersPage() {
   const session = await auth();
 
@@ -31,13 +68,13 @@ export default async function MembersPage() {
         <h1 className="text-3xl font-bold text-primary">Members</h1>
 
         <p className="mt-3 text-gray-600">
-          Please sign in to access your online yoga classes and schedule.
+          Please sign in to access your schedule and membership status.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <ButtonLink href="/members/login">Sign in</ButtonLink>
           <ButtonLink href="/pricing" variant="secondary">
-            Join Online
+            Pricing
           </ButtonLink>
         </div>
       </main>
@@ -45,35 +82,13 @@ export default async function MembersPage() {
   }
 
   const email = session.user.email;
-
-  // Call server-side status endpoint to check membership
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://thirdlimbyoga.com";
-
-  let isActive = false;
-  let statusError = null;
-
-  try {
-    const statusRes = await fetch(`${baseUrl}/api/members/status`, {
-      cache: "no-store",
-    });
-
-    if (!statusRes.ok) {
-      statusError = `Status check failed (${statusRes.status})`;
-    } else {
-      const status = await statusRes.json();
-      isActive = Boolean(status?.active);
-    }
-  } catch (e) {
-    statusError = "Status check failed (network error)";
-  }
+  const status = await getMembershipStatus(email);
 
   // ─────────────────────────────────────────────
   // LOGGED IN
   // ─────────────────────────────────────────────
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      {/* Success banner */}
       <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
         You’re logged in successfully.
       </div>
@@ -87,7 +102,6 @@ export default async function MembersPage() {
           </p>
         </div>
 
-        {/* Sign out */}
         <form
           action={async () => {
             "use server";
@@ -101,7 +115,7 @@ export default async function MembersPage() {
       </div>
 
       <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {/* Main content */}
+        {/* Main */}
         <div className="space-y-6 md:col-span-2">
           {/* Membership status */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -109,12 +123,14 @@ export default async function MembersPage() {
               Membership status
             </h2>
 
-            {statusError ? (
+            {status?.error ? (
               <p className="mt-2 text-sm text-gray-600">
-                We couldn’t confirm your membership right now. Please refresh in
-                a moment.
+                We couldn’t confirm your membership right now.
+                <span className="block mt-1 text-xs text-gray-500">
+                  {status.error}
+                </span>
               </p>
-            ) : isActive ? (
+            ) : status.active ? (
               <>
                 <p className="mt-2 text-sm text-gray-600">
                   Your membership is active. Your class links are sent to your
@@ -130,9 +146,9 @@ export default async function MembersPage() {
                   We don’t see an active membership for this email yet.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <ButtonLink href="/pricing">Join Online</ButtonLink>
+                  <ButtonLink href="/pricing">View Pricing</ButtonLink>
                   <ButtonLink href="/contact" variant="secondary">
-                    Contact support
+                    Contact
                   </ButtonLink>
                 </div>
               </>
@@ -150,25 +166,23 @@ export default async function MembersPage() {
             </p>
 
             <p className="mt-2 text-sm text-gray-600">
-              You don’t need to log in each time — simply open the email and
-              join the class directly.
+              You don’t need to sign in each time — simply open the email and
+              join directly.
             </p>
 
             <p className="mt-2 text-sm text-gray-600">
-              This page is here for your schedule and account access.
+              This page is here for your schedule and membership status.
             </p>
           </div>
 
-          {/* Schedule access */}
+          {/* Schedule */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900">
               Class schedule
             </h2>
-
             <p className="mt-2 text-sm text-gray-600">
               View upcoming live classes and timings.
             </p>
-
             <div className="mt-4">
               <ButtonLink href="/schedule">View Schedule</ButtonLink>
             </div>
