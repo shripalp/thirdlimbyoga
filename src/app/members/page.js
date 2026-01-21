@@ -1,6 +1,7 @@
 // src/app/members/page.js
 import Link from "next/link";
 import ManageMembershipButton from "@/components/ManageMembershipButton";
+import ClassLinkCard from "@/components/ClassLinkCard";
 import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -115,6 +116,8 @@ export default async function MembersPage() {
   const email = session.user.email;
   const status = await getMembershipStatus(email);
   const nextBillingDate = status.active ? await getNextBillingDate(email) : null;
+  const classLink =
+    process.env.CLASS_JOIN_LINK || process.env.TEAMS_CLASS_LINK || null;
 
   // ─────────────────────────────────────────────
   // LOGGED IN
@@ -186,6 +189,12 @@ export default async function MembersPage() {
                   <ButtonLink href="/schedule">View Schedule</ButtonLink>
                   <ManageMembershipButton />
                 </div>
+
+                {classLink ? (
+                  <div className="mt-6">
+                    <ClassLinkCard classLink={classLink} />
+                  </div>
+                ) : null}
               </>
             ) : (
               <>
