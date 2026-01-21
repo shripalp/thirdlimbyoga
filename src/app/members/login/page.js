@@ -14,13 +14,16 @@ export default function MembersLoginPage() {
     if (!email) return;
 
     setLoadingEmail(true);
-    await signIn("resend", { email, callbackUrl: "/members" });
-    setLoadingEmail(false);
+    await signIn("resend", { email, callbackUrl: "/members/redirect" });
+    // Fallback in case redirect fails
+    setTimeout(() => setLoadingEmail(false), 1500);
   }
 
   async function handleGoogle() {
     setLoadingGoogle(true);
-    await signIn("google", { callbackUrl: "/members" });
+    await signIn("google", { callbackUrl: "/members/redirect" });
+    // Fallback in case redirect fails
+    setTimeout(() => setLoadingGoogle(false), 1500);
   }
 
   return (
