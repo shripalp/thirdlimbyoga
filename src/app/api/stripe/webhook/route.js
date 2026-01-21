@@ -71,23 +71,38 @@ export async function POST(req) {
         await resend.emails.send({
           from: emailFrom,
           to: email,
-          subject: "Your Third Limb Yoga class link",
+          subject: "Your Third Limb Yoga class link 🌿",
           html: `
-            <div style="font-family: Arial, sans-serif; line-height:1.5">
-              <h2>Welcome to Third Limb Yoga 🧘</h2>
-              <p>Your membership is active. Here is your class link:</p>
-              <p>
-                <a href="${classLink}" style="display:inline-block;padding:10px 14px;text-decoration:none;border-radius:10px;background:#111;color:#fff">
-                  Open class link
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#111;">
+              <h2 style="margin:0 0 8px;">Welcome to Third Limb Yoga 🧘</h2>
+
+              <p style="margin:0;">Your membership is active. You’re all set for this month.</p>
+
+              <p style="margin:16px 0 0;">Use the button below to access your live classes:</p>
+
+              <p style="margin:24px 0;">
+                <a href="${classLink}" style="display:inline-block;padding:14px 20px;border-radius:10px;background-color:#111;color:#fff;text-decoration:none;font-weight:600;">
+                  Open your class link
                 </a>
               </p>
-              <p style="color:#555;font-size:12px">
-                Tip: Save this email so you can open your class link quickly next time.
+
+              <p style="margin:0;font-size:14px;color:#555;">
+                <strong>Tip:</strong> Save this email so you can open your class link quickly next time.
               </p>
-              <p style="color:#555;font-size:12px">
-                If the button doesn’t work, copy/paste:<br/>
-                ${classLink}
+
+              <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
+
+              <p style="margin:0;font-size:14px;color:#555;">
+                You don’t need to sign in each time. Simply open this email and join your class.
               </p>
+
+              <p style="margin:16px 0 0;font-size:13px;color:#777;">
+                If the button doesn’t work, copy and paste this link into your browser:
+                <br />
+                <span style="word-break:break-all;">${classLink}</span>
+              </p>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#777;">💛 Third Limb Yoga</p>
             </div>
           `,
         });
