@@ -2,6 +2,7 @@
 import Link from "next/link";
 import ManageMembershipButton from "@/components/ManageMembershipButton";
 import ClassLinkCard from "@/components/ClassLinkCard";
+import CancelMembershipButton from "@/components/CancelMembershipButton";
 import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -88,7 +89,7 @@ async function getNextBillingDate(email) {
   }
 }
 
-export default async function MembersPage() {
+export default async function MembersPage({ searchParams }) {
   const session = await auth();
 
   // ─────────────────────────────────────────────
@@ -124,6 +125,12 @@ export default async function MembersPage() {
   // ─────────────────────────────────────────────
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      {searchParams?.cancel === "1" ? (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Your cancellation was received. If your plan cancels at the end of the billing period, your access stays active until then.
+        </div>
+      ) : null}
+
       <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
         You’re logged in successfully.
       </div>
@@ -188,6 +195,7 @@ export default async function MembersPage() {
                 <div className="mt-4 flex flex-wrap gap-3">
                   <ButtonLink href="/schedule">View Schedule</ButtonLink>
                   <ManageMembershipButton />
+                  <CancelMembershipButton />
                 </div>
 
                 {classLink ? (
