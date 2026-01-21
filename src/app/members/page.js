@@ -9,7 +9,11 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+function getStripeClient() {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) return null;
+  return new Stripe(secret);
+}
 
 function ButtonLink({ href, children, variant = "primary" }) {
   const base =
@@ -35,12 +39,15 @@ async function getMembershipStatus(email) {
   }
 
   try {
-    const customers = await stripe.customers.list({ email, limit: 1 });
+    const stripeClient = getStripeClient();
+    if (!stripeClient) return { active: false, error: "Missing STRIPE_SECRET_KEY" };
+
+    const customers = await stripeClient.customers.list({ email, limit: 1 });
     const customer = customers.data?.[0];
 
     if (!customer) return { active: false };
 
-    const subs = await stripe.subscriptions.list({
+    const subs = await stripeClient.subscriptions.list({
       customer: customer.id,
       status: "all",
       limit: 20,
@@ -70,7 +77,10 @@ async function getNextBillingDate(email) {
   if (!user?.stripeSubscriptionId) return null;
 
   try {
-    const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+    const stripeClient = getStripeClient();
+    if (!stripeClient) return null;
+
+    const sub = await stripeClient.subscriptions.retrieve(user.stripeSubscriptionId);
 
     // Only show renewal date when membership is effectively active
     const statusOk = sub.status === "active" || sub.status === "trialing";
@@ -125,9 +135,16 @@ export default async function MembersPage({ searchParams }) {
   // ─────────────────────────────────────────────
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      {searchParams?.success === "1" ? (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+          Payment successful. Your class link has been sent to your email — save that email for next time.
+        </div>
+      ) : null}
+
       {searchParams?.cancel === "1" ? (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Your cancellation was received. If your plan cancels at the end of the billing period, your access stays active until then.
+          Your cancellation was received. If your plan cancels at the end of the billing period,
+          your access stays active until then.
         </div>
       ) : null}
 

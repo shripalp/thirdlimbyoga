@@ -6,25 +6,51 @@ import Link from "next/link";
 
 export default function MembersLoginPage() {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
-  async function handleSubmit(e) {
+  async function handleEmailSubmit(e) {
     e.preventDefault();
     if (!email) return;
 
-    setLoading(true);
+    setLoadingEmail(true);
     await signIn("resend", { email, callbackUrl: "/members" });
-    setLoading(false);
+    setLoadingEmail(false);
+  }
+
+  async function handleGoogle() {
+    setLoadingGoogle(true);
+    await signIn("google", { callbackUrl: "/members" });
   }
 
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
       <h1 className="text-3xl font-bold text-primary">Member login</h1>
-      <p className="mt-3 text-gray-600">
-        Enter your email and we’ll send you a secure sign-in link.
+      <p className="mt-3 text-gray-600">Sign in to access your Members area.</p>
+
+      {/* Google */}
+      <button
+        type="button"
+        onClick={handleGoogle}
+        disabled={loadingGoogle || loadingEmail}
+        className="mt-8 w-full rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-60"
+      >
+        {loadingGoogle ? "Redirecting…" : "Continue with Google"}
+      </button>
+
+      {/* Divider */}
+      <div className="my-8 flex items-center gap-4">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="text-xs font-semibold text-gray-500">OR</span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+
+      {/* Magic link */}
+      <p className="text-gray-600">
+        Prefer email? Enter your email and we’ll send you a secure sign-in link.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+      <form onSubmit={handleEmailSubmit} className="mt-4 space-y-4">
         <label className="block">
           <span className="text-sm font-semibold text-gray-900">Email</span>
           <input
@@ -39,10 +65,10 @@ export default function MembersLoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loadingEmail || loadingGoogle}
           className="w-full rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
         >
-          {loading ? "Sending link..." : "Email me a sign-in link"}
+          {loadingEmail ? "Sending link…" : "Email me a sign-in link"}
         </button>
       </form>
 
@@ -51,6 +77,11 @@ export default function MembersLoginPage() {
         <Link className="font-semibold text-primary underline" href="/pricing">
           Join online
         </Link>
+      </p>
+
+      <p className="mt-3 text-xs text-gray-500">
+        Tip: Use the same email you used for checkout so your membership is
+        detected.
       </p>
     </main>
   );
