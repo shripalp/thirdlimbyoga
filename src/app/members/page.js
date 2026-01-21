@@ -3,6 +3,7 @@ import Link from "next/link";
 import ManageMembershipButton from "@/components/ManageMembershipButton";
 import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,35 @@ async function getMembershipStatus(email) {
   }
 }
 
+async function getNextBillingDate(email) {
+  // We prefer the subscription id we stored during webhook handling
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { stripeSubscriptionId: true, stripeSubscriptionStatus: true },
+  });
+
+  if (!user?.stripeSubscriptionId) return null;
+
+  try {
+    const sub = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+
+    // Only show renewal date when membership is effectively active
+    const statusOk = sub.status === "active" || sub.status === "trialing";
+    if (!statusOk) return null;
+
+    const nextBillingUnix = sub.current_period_end; // seconds
+    if (!nextBillingUnix) return null;
+
+    return new Date(nextBillingUnix * 1000).toLocaleDateString("en-CA", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default async function MembersPage() {
   const session = await auth();
 
@@ -84,6 +114,7 @@ export default async function MembersPage() {
 
   const email = session.user.email;
   const status = await getMembershipStatus(email);
+  const nextBillingDate = status.active ? await getNextBillingDate(email) : null;
 
   // ─────────────────────────────────────────────
   // LOGGED IN
@@ -98,8 +129,7 @@ export default async function MembersPage() {
         <div>
           <h1 className="text-3xl font-bold text-primary">Members</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Signed in as{" "}
-            <span className="font-medium text-gray-900">{email}</span>
+            Signed in as <span className="font-medium text-gray-900">{email}</span>
           </p>
         </div>
 
@@ -120,27 +150,40 @@ export default async function MembersPage() {
         <div className="space-y-6 md:col-span-2">
           {/* Membership status */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Membership status
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Membership status</h2>
 
             {status?.error ? (
               <p className="mt-2 text-sm text-gray-600">
                 We couldn’t confirm your membership right now.
-                <span className="block mt-1 text-xs text-gray-500">
-                  {status.error}
-                </span>
+                <span className="block mt-1 text-xs text-gray-500">{status.error}</span>
               </p>
             ) : status.active ? (
               <>
-                <p className="mt-2 text-sm text-gray-600">
-                  Your membership is active. Your class links are sent to your
-                  email.
-                </p>
-                <div className="mt-4">
-                  <ButtonLink href="/schedule">View Schedule</ButtonLink>
+                {/* Success badge */}
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-green-800 border border-green-200">
+                  Membership Active
                 </div>
-                <div className="mt-4 flex gap-3">
+
+                <p className="mt-3 text-sm text-gray-600">
+                  You’re all set for this month. Your class link is sent to your email.
+                </p>
+
+                {/* What happens next */}
+                <div className="mt-4 rounded-xl bg-gray-50 p-4">
+                  <p className="text-sm font-semibold text-gray-900">What happens next</p>
+                  <ul className="mt-2 space-y-2 text-sm text-gray-700 list-disc pl-5">
+                    <li>Check your email for your class link (save it for next time).</li>
+                    <li>Use the Schedule page to see upcoming class times.</li>
+                    <li>You can manage or cancel your membership anytime.</li>
+                  </ul>
+
+                  {nextBillingDate ? (
+                    <p className="mt-3 text-xs text-gray-500">Next renewal: {nextBillingDate}</p>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <ButtonLink href="/schedule">View Schedule</ButtonLink>
                   <ManageMembershipButton />
                 </div>
               </>
@@ -161,17 +204,14 @@ export default async function MembersPage() {
 
           {/* How to join */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
-              How to join your classes
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">How to join your classes</h2>
 
             <p className="mt-3 text-sm text-gray-600">
               Your live class links are sent to your email after you join.
             </p>
 
             <p className="mt-2 text-sm text-gray-600">
-              You don’t need to sign in each time — simply open the email and
-              join directly.
+              You don’t need to sign in each time — simply open the email and join directly.
             </p>
 
             <p className="mt-2 text-sm text-gray-600">
@@ -181,12 +221,8 @@ export default async function MembersPage() {
 
           {/* Schedule */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Class schedule
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              View upcoming live classes and timings.
-            </p>
+            <h2 className="text-lg font-semibold text-gray-900">Class schedule</h2>
+            <p className="mt-2 text-sm text-gray-600">View upcoming live classes and timings.</p>
             <div className="mt-4">
               <ButtonLink href="/schedule">View Schedule</ButtonLink>
             </div>
