@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function MembersLoginPage() {
+  const router = useRouter();
+  const { status } = useSession();
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/members/redirect");
+    }
+  }, [status, router]);
+
   const [email, setEmail] = useState("");
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -24,6 +34,15 @@ export default function MembersLoginPage() {
     await signIn("google", { callbackUrl: "/members/redirect" });
     // Fallback in case redirect fails
     setTimeout(() => setLoadingGoogle(false), 1500);
+  }
+
+  if (status === "authenticated") {
+    return (
+      <main className="mx-auto max-w-lg px-6 py-12">
+        <h1 className="text-3xl font-bold text-primary">Member login</h1>
+        <p className="mt-3 text-gray-600">Redirecting you to your Members area…</p>
+      </main>
+    );
   }
 
   return (
