@@ -8,6 +8,7 @@ import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getStripeClient() {
   const secret = process.env.STRIPE_SECRET_KEY;
@@ -116,7 +117,13 @@ export default async function MembersPage({ searchParams }) {
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <ButtonLink href="/members/login">Sign in</ButtonLink>
+          <Link
+            href="/members/login"
+            prefetch={false}
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+          >
+            Sign in
+          </Link>
           <ButtonLink href="/pricing" variant="secondary">
             Pricing
           </ButtonLink>
@@ -149,7 +156,7 @@ export default async function MembersPage({ searchParams }) {
         </div>
       ) : null}
 
-      <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+      <div className="mb-6 rounded-xl border bg-green-50 p-4 text-sm text-green-800">
         You’re logged in successfully.
       </div>
 
@@ -164,10 +171,10 @@ export default async function MembersPage({ searchParams }) {
         <form
           action={async () => {
             "use server";
-            await signOut({ redirectTo: "/" });
+            await signOut({ redirectTo: "/members/login?signedout=1" });
           }}
         >
-          <button className="text-sm text-gray-500 hover:text-gray-900">
+          <button type="submit" className="text-sm text-gray-500 hover:text-gray-900">
             Sign out
           </button>
         </form>
