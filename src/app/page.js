@@ -47,43 +47,50 @@ export default function HomePage() {
   return (
     <main>
       {/* HERO */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-14 md:py-20">
+      <section className="relative overflow-hidden bg-white">
+        {/* Soft background glows */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -bottom-44 right-[-120px] h-[520px] w-[520px] rounded-full bg-secondary/20 blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-6 py-16 md:py-24">
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
             <div>
-              <p className="inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary">
-                Live online yoga
+              <p className="inline-flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Live online yoga • Monthly membership
               </p>
 
-              <h1 className="mt-4 text-4xl font-bold tracking-tight text-gray-900 md:text-5xl">
-                Online yoga that fits your life.
+              <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-gray-900 md:text-5xl">
+                Feel calmer, stronger, and more flexible—
+                <span className="text-primary"> one class at a time.</span>
               </h1>
 
-              <p className="mt-4 text-base text-gray-600 md:text-lg">
-                Join live guided yoga classes from home. Build strength,
-                mobility, and calm — without pressure or overwhelm. You can join from your Members page or directly from the class link emailed to you.
+              <p className="mt-5 text-base text-gray-600 md:text-lg">
+                Join live guided yoga from home. Build strength, mobility, and calm — without pressure or overwhelm.
+                After checkout, you’ll receive your class link by email and it will also appear in your Members area.
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
-                <PrimaryButton href="/pricing">Join Online</PrimaryButton>
+                <PrimaryButton href="/pricing">View pricing</PrimaryButton>
                 <SecondaryButton href="/schedule">View Schedule</SecondaryButton>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3 text-sm text-gray-600">
-                <span className="rounded-full bg-gray-50 px-3 py-1">
+              <div className="mt-7 flex flex-wrap gap-3 text-sm text-gray-600">
+                <span className="rounded-full border bg-white px-3 py-1 shadow-sm">
                   Beginner-friendly
                 </span>
-                <span className="rounded-full bg-gray-50 px-3 py-1">
+                <span className="rounded-full border bg-white px-3 py-1 shadow-sm">
                   Live online classes
                 </span>
-                <span className="rounded-full bg-gray-50 px-3 py-1">
+                <span className="rounded-full border bg-white px-3 py-1 shadow-sm">
                   Cancel anytime
                 </span>
               </div>
             </div>
 
             {/* INFO CARD */}
-            <div className="rounded-3xl border bg-gradient-to-br from-secondary to-white p-8 shadow-sm">
+            <div className="rounded-3xl border bg-gradient-to-br from-secondary/60 to-white p-8 shadow-sm">
               <div className="rounded-2xl bg-white p-6">
                 <h2 className="text-lg font-semibold text-gray-900">
                   What you get
@@ -92,7 +99,7 @@ export default function HomePage() {
                   <li>• Live online yoga classes</li>
                   <li>• Weekly class schedule</li>
                   <li>• Members page access after checkout</li>
-                  <li>• Class link sent by email (or join from your Members page)</li>
+                  <li>• Class link sent by email + shown in Members</li>
                 </ul>
 
                 <div className="mt-6">
@@ -140,7 +147,7 @@ export default function HomePage() {
                     Ask a question
                   </SecondaryButton>
                   <PrimaryButton href="/pricing">
-                    Start membership
+                    View pricing
                   </PrimaryButton>
                 </div>
               </div>
@@ -168,8 +175,8 @@ export default function HomePage() {
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             <StepCard
               step="1"
-              title="Join online"
-              text="Choose your membership and checkout securely with Stripe."
+              title="Choose a plan"
+              text="Pick your monthly membership and checkout securely with Stripe."
             />
             <StepCard
               step="2"
@@ -184,7 +191,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 flex flex-wrap gap-3">
-            <PrimaryButton href="/pricing">Join Online</PrimaryButton>
+            <PrimaryButton href="/pricing">View pricing</PrimaryButton>
             <SecondaryButton href="/schedule">
               View Schedule
             </SecondaryButton>
@@ -204,7 +211,7 @@ export default function HomePage() {
               practice from home.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <PrimaryButton href="/pricing">Join Online</PrimaryButton>
+              <PrimaryButton href="/pricing">View pricing</PrimaryButton>
               <SecondaryButton href="/schedule">
                 Check class times
               </SecondaryButton>
