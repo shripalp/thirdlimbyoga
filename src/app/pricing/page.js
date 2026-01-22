@@ -62,7 +62,7 @@ export default function PricingPage() {
 
             <div className="rounded-xl bg-gray-50 px-5 py-4 text-right">
               <p className="text-xs text-gray-500">Billed monthly</p>
-              <p className="mt-1 text-3xl font-bold text-gray-900">$ / month</p>
+              <p className="mt-1 text-3xl font-bold text-gray-900">$ 20/ month</p>
               <p className="mt-1 text-xs text-gray-500">Secure checkout</p>
             </div>
           </div>
@@ -176,9 +176,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <p className="mt-8 text-xs text-gray-500">
-        Note: Replace the \"$ / month\" placeholder with your real monthly price.
-      </p>
+      
     </main>
   );
 }
