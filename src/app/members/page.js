@@ -100,6 +100,7 @@ async function getNextBillingDate(email) {
 }
 
 export default async function MembersPage({ searchParams }) {
+  const sp = searchParams && typeof searchParams.then === "function" ? await searchParams : (searchParams || {});
   const session = await auth();
 
   // ─────────────────────────────────────────────
@@ -135,13 +136,13 @@ export default async function MembersPage({ searchParams }) {
   // ─────────────────────────────────────────────
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      {searchParams?.success === "1" ? (
+      {sp.success === "1" ? (
         <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
           Payment successful. Your class link has been sent to your email — save that email for next time.
         </div>
       ) : null}
 
-      {searchParams?.cancel === "1" ? (
+      {sp.cancel === "1" ? (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Your cancellation was received. If your plan cancels at the end of the billing period,
           your access stays active until then.
