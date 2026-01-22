@@ -6,24 +6,39 @@ export default function CancelMembershipButton() {
   const [loading, setLoading] = useState(false);
 
   async function go() {
-    setLoading(true);
-    const res = await fetch("/api/stripe/portal-cancel", { method: "POST" });
-    const data = await res.json();
+    try {
+      setLoading(true);
 
-    if (data?.url) {
-      window.location.href = data.url;
-      return;
+      const res = await fetch("/api/stripe/portal-cancel", { method: "POST" });
+
+      // Safely parse JSON only if it is JSON
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await res.json() : null;
+
+      if (!res.ok) {
+        const msg = data?.error || `Request failed (${res.status})`;
+        alert(msg);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      alert("No portal URL returned.");
+    } catch (e) {
+      alert(e?.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-    alert(data?.error || "Could not open cancellation.");
   }
 
   return (
     <button
       onClick={go}
       disabled={loading}
-      className="rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-60"
+      className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
     >
       {loading ? "Opening…" : "Cancel membership"}
     </button>

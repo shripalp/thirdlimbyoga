@@ -2,22 +2,51 @@
 
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function MembersLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status } = useSession();
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/members/redirect");
+    let cancelled = false;
+
+    async function verifyThenRedirect() {
+      // If user just signed out, do not auto-redirect (prevents loops)
+      if (searchParams?.get("signedout") === "1") return;
+
+      if (status !== "authenticated") return;
+
+      // Guard against stale client session state: verify with server
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        if (!res.ok) return;
+
+        const s = await res.json();
+        if (cancelled) return;
+
+        if (s?.user?.email) {
+          setRedirecting(true);
+          router.replace("/members/redirect");
+        }
+      } catch {
+        // ignore
+      }
     }
-  }, [status, router]);
+
+    verifyThenRedirect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, router, searchParams]);
 
   const [email, setEmail] = useState("");
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   async function handleEmailSubmit(e) {
     e.preventDefault();
@@ -36,7 +65,16 @@ export default function MembersLoginPage() {
     setTimeout(() => setLoadingGoogle(false), 1500);
   }
 
-  if (status === "authenticated") {
+  if (status === "loading") {
+    return (
+      <main className="mx-auto max-w-lg px-6 py-12">
+        <h1 className="text-3xl font-bold text-primary">Member login</h1>
+        <p className="mt-3 text-gray-600">Checking your session…</p>
+      </main>
+    );
+  }
+
+  if (redirecting) {
     return (
       <main className="mx-auto max-w-lg px-6 py-12">
         <h1 className="text-3xl font-bold text-primary">Member login</h1>
