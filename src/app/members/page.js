@@ -1,10 +1,9 @@
-// src/app/members/page.js
 import Link from "next/link";
-import ManageMembershipButton from "@/components/ManageMembershipButton";
-import ClassLinkCard from "@/components/ClassLinkCard";
-import CancelMembershipButton from "@/components/CancelMembershipButton";
 import Stripe from "stripe";
 import { auth, signOut } from "@/auth";
+import ManageMembershipButton from "@/components/ManageMembershipButton";
+import CancelMembershipButton from "@/components/CancelMembershipButton";
+import ClassLinkCard from "@/components/ClassLinkCard";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -16,133 +15,152 @@ function getStripeClient() {
   return new Stripe(secret);
 }
 
-function ButtonLink({ href, children, variant = "primary" }) {
-  const base =
-    "inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold shadow-sm transition";
-  const styles =
-    variant === "primary"
-      ? "bg-primary text-white hover:opacity-90"
-      : "border border-gray-200 bg-white text-gray-900 hover:bg-gray-50";
+function formatUnixDate(unixSeconds) {
+  if (!unixSeconds) return null;
+  const d = new Date(unixSeconds * 1000);
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
 
+async function getMembershipSummary(email) {
+  const stripe = getStripeClient();
+  const priceId = process.env.STRIPE_PRICE_ID;
+
+  if (!stripe) return { state: "error", error: "Missing STRIPE_SECRET_KEY" };
+  if (!priceId) return { state: "error", error: "Missing STRIPE_PRICE_ID" };
+
+  // Find Stripe customer for this email
+  const customers = await stripe.customers.list({ email, limit: 1 });
+  const customer = customers.data?.[0];
+  if (!customer?.id) return { state: "inactive", reason: "no_customer" };
+
+  // List subs and find the one that matches our monthly price
+  const subs = await stripe.subscriptions.list({
+    customer: customer.id,
+    status: "all",
+    limit: 20,
+  });
+
+  const okStatuses = new Set(["active", "trialing", "past_due", "unpaid"]);
+
+  // newest first
+  const sorted = [...(subs.data || [])].sort((a, b) => (b.created || 0) - (a.created || 0));
+
+  const match = sorted.find((sub) => {
+    if (!okStatuses.has(sub.status)) return false;
+    return sub.items?.data?.some((it) => it?.price?.id === priceId);
+  });
+
+  if (!match) return { state: "inactive", reason: "no_matching_subscription", customerId: customer.id };
+
+  const accessUntil = formatUnixDate(match.current_period_end);
+  const canceling = Boolean(match.cancel_at_period_end || match.cancel_at);
+
+  // Best-effort: keep DB in sync (helps later actions)
+  try {
+    await prisma.user.update({
+      where: { email },
+      data: {
+        stripeCustomerId: customer.id,
+        stripeSubscriptionId: match.id,
+        stripeSubscriptionStatus: match.status,
+      },
+    });
+  } catch {
+    // ignore
+  }
+
+  return {
+    state: canceling ? "canceling" : "active",
+    subscriptionStatus: match.status,
+    customerId: customer.id,
+    subscriptionId: match.id,
+    accessUntil,
+    canceling,
+  };
+}
+
+function Card({ title, children }) {
   return (
-    <Link href={href} className={`${base} ${styles}`}>
+    <section className="rounded-2xl border bg-white p-6 shadow-sm">
+      {title ? <h2 className="text-lg font-semibold text-gray-900">{title}</h2> : null}
+      <div className={title ? "mt-3" : ""}>{children}</div>
+    </section>
+  );
+}
+
+function Pill({ tone = "gray", children }) {
+  const tones = {
+    green: "border-green-200 bg-green-50 text-green-900",
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    red: "border-red-200 bg-red-50 text-red-900",
+    gray: "border-gray-200 bg-gray-50 text-gray-900",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tones[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function PrimaryLink({ href, children }) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+    >
       {children}
     </Link>
   );
 }
 
-async function getMembershipStatus(email) {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return { active: false, error: "Missing STRIPE_SECRET_KEY" };
-  }
-  if (!process.env.STRIPE_PRICE_ID) {
-    return { active: false, error: "Missing STRIPE_PRICE_ID" };
-  }
-
-  try {
-    const stripeClient = getStripeClient();
-    if (!stripeClient) return { active: false, error: "Missing STRIPE_SECRET_KEY" };
-
-    const customers = await stripeClient.customers.list({ email, limit: 1 });
-    const customer = customers.data?.[0];
-
-    if (!customer) return { active: false };
-
-    const subs = await stripeClient.subscriptions.list({
-      customer: customer.id,
-      status: "all",
-      limit: 20,
-    });
-
-    const active = subs.data.some((sub) => {
-      const statusOk = sub.status === "active" || sub.status === "trialing";
-      const priceMatch = (sub.items?.data || []).some(
-        (item) => item?.price?.id === process.env.STRIPE_PRICE_ID
-      );
-      return statusOk && priceMatch;
-    });
-
-    return { active, customerId: customer.id };
-  } catch (e) {
-    return { active: false, error: e?.message || "Stripe error" };
-  }
-}
-
-async function getNextBillingDate(email) {
-  // We prefer the subscription id we stored during webhook handling
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { stripeSubscriptionId: true, stripeSubscriptionStatus: true },
-  });
-
-  if (!user?.stripeSubscriptionId) return null;
-
-  try {
-    const stripeClient = getStripeClient();
-    if (!stripeClient) return null;
-
-    const sub = await stripeClient.subscriptions.retrieve(user.stripeSubscriptionId);
-
-    // Only show renewal date when membership is effectively active
-    const statusOk = sub.status === "active" || sub.status === "trialing";
-    if (!statusOk) return null;
-
-    const nextBillingUnix = sub.current_period_end; // seconds
-    if (!nextBillingUnix) return null;
-
-    return new Date(nextBillingUnix * 1000).toLocaleDateString("en-CA", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return null;
-  }
+function SecondaryLink({ href, children }) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50"
+    >
+      {children}
+    </Link>
+  );
 }
 
 export default async function MembersPage({ searchParams }) {
-  const sp = searchParams && typeof searchParams.then === "function" ? await searchParams : (searchParams || {});
+  // Next 16: searchParams can be a Promise
+  const sp =
+    searchParams && typeof searchParams.then === "function"
+      ? await searchParams
+      : searchParams || {};
+
   const session = await auth();
 
-  // ─────────────────────────────────────────────
-  // NOT LOGGED IN
-  // ─────────────────────────────────────────────
+  // Not logged in
   if (!session?.user?.email) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         <h1 className="text-3xl font-bold text-primary">Members</h1>
-
         <p className="mt-3 text-gray-600">
-          Please sign in to access your schedule and membership status.
+          Sign in to view your membership status and access your class link.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/members/login"
-            prefetch={false}
-            className="inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-          >
-            Sign in
-          </Link>
-          <ButtonLink href="/pricing" variant="secondary">
-            Pricing
-          </ButtonLink>
+          <PrimaryLink href="/members/login">Sign in</PrimaryLink>
+          <SecondaryLink href="/pricing">View pricing</SecondaryLink>
         </div>
       </main>
     );
   }
 
   const email = session.user.email;
-  const status = await getMembershipStatus(email);
-  const nextBillingDate = status.active ? await getNextBillingDate(email) : null;
-  const classLink =
-    process.env.CLASS_JOIN_LINK || process.env.TEAMS_CLASS_LINK || null;
+  const membership = await getMembershipSummary(email);
 
-  // ─────────────────────────────────────────────
-  // LOGGED IN
-  // ─────────────────────────────────────────────
+  const classLink = process.env.CLASS_JOIN_LINK || process.env.TEAMS_CLASS_LINK || null;
+  const hasAccess = membership.state === "active" || membership.state === "canceling";
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      {/* Top banners */}
       {sp.success === "1" ? (
         <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
           Payment successful. Your class link has been sent to your email — save that email for next time.
@@ -151,21 +169,20 @@ export default async function MembersPage({ searchParams }) {
 
       {sp.cancel === "1" ? (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Your cancellation was received. If your plan cancels at the end of the billing period,
-          your access stays active until then.
+          Your cancellation was received.
+          {membership?.accessUntil ? (
+            <> Your access remains active until <strong>{membership.accessUntil}</strong>.</>
+          ) : (
+            <> Your access remains active until the end of your billing period.</>
+          )}
         </div>
       ) : null}
 
-      <div className="mb-6 rounded-xl border bg-green-50 p-4 text-sm text-green-800">
-        You’re logged in successfully.
-      </div>
-
-      <div className="flex items-start justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-primary">Members</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Signed in as <span className="font-medium text-gray-900">{email}</span>
-          </p>
+          <p className="mt-2 text-sm text-gray-600">Signed in as <span className="font-semibold">{email}</span></p>
         </div>
 
         <form
@@ -174,120 +191,87 @@ export default async function MembersPage({ searchParams }) {
             await signOut({ redirectTo: "/members/login?signedout=1" });
           }}
         >
-          <button type="submit" className="text-sm text-gray-500 hover:text-gray-900">
+          <button type="submit" className="text-sm font-semibold text-gray-600 hover:text-gray-900">
             Sign out
           </button>
         </form>
       </div>
 
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {/* Main */}
-        <div className="space-y-6 md:col-span-2">
-          {/* Membership status */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Membership status</h2>
-
-            {status?.error ? (
-              <p className="mt-2 text-sm text-gray-600">
-                We couldn’t confirm your membership right now.
-                <span className="block mt-1 text-xs text-gray-500">{status.error}</span>
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* Status card */}
+        <Card title="Membership status">
+          {membership.state === "error" ? (
+            <>
+              <Pill tone="gray">Status unavailable</Pill>
+              <p className="mt-3 text-sm text-gray-600">
+                {membership.error}. Please try again in a minute.
               </p>
-            ) : status.active ? (
-              <>
-                {/* Success badge */}
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-2 text-sm font-semibold text-green-800 border border-green-200">
-                  Membership Active
-                </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <SecondaryLink href="/schedule">View schedule</SecondaryLink>
+                <SecondaryLink href="/pricing">View pricing</SecondaryLink>
+              </div>
+            </>
+          ) : membership.state === "active" ? (
+            <>
+              <Pill tone="green">Active</Pill>
+              <p className="mt-3 text-sm text-gray-700">
+                Your membership is active.
+                {membership.accessUntil ? <> Next renewal: <strong>{membership.accessUntil}</strong>.</> : null}
+              </p>
 
-                <p className="mt-3 text-sm text-gray-600">
-                  You’re all set for this month. Your class link is sent to your email.
+              {["past_due", "unpaid"].includes(membership.subscriptionStatus) ? (
+                <p className="mt-2 text-xs text-amber-800">
+                  Payment needs attention. Please update your billing details in Manage membership.
                 </p>
+              ) : null}
 
-                {/* What happens next */}
-                <div className="mt-4 rounded-xl bg-gray-50 p-4">
-                  <p className="text-sm font-semibold text-gray-900">What happens next</p>
-                  <ul className="mt-2 space-y-2 text-sm text-gray-700 list-disc pl-5">
-                    <li>Check your email for your class link (save it for next time).</li>
-                    <li>Use the Schedule page to see upcoming class times.</li>
-                    <li>You can manage or cancel your membership anytime.</li>
-                  </ul>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <SecondaryLink href="/schedule">View schedule</SecondaryLink>
+                <ManageMembershipButton />
+                <CancelMembershipButton />
+              </div>
+            </>
+          ) : membership.state === "canceling" ? (
+            <>
+              <Pill tone="amber">Cancelling</Pill>
+              <p className="mt-3 text-sm text-gray-700">
+                Your membership is set to end.
+                {membership.accessUntil ? <> Active until <strong>{membership.accessUntil}</strong>.</> : null}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <SecondaryLink href="/schedule">View schedule</SecondaryLink>
+                <ManageMembershipButton />
+                {/* Cancel button hidden because cancellation is already scheduled */}
+              </div>
+            </>
+          ) : (
+            <>
+              <Pill tone="red">Not active</Pill>
+              <p className="mt-3 text-sm text-gray-700">
+                No active membership found for this email.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <PrimaryLink href="/pricing">View pricing</PrimaryLink>
+                <SecondaryLink href="/classes">Browse classes</SecondaryLink>
+              </div>
+            </>
+          )}
+        </Card>
 
-                  {nextBillingDate ? (
-                    <p className="mt-3 text-xs text-gray-500">Next renewal: {nextBillingDate}</p>
-                  ) : null}
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <ButtonLink href="/schedule">View Schedule</ButtonLink>
-                  <ManageMembershipButton />
-                  <CancelMembershipButton />
-                </div>
-
-                {classLink ? (
-                  <div className="mt-6">
-                    <ClassLinkCard classLink={classLink} />
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <p className="mt-2 text-sm text-gray-600">
-                  We don’t see an active membership for this email yet.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <ButtonLink href="/pricing">View Pricing</ButtonLink>
-                  <ButtonLink href="/contact" variant="secondary">
-                    Contact
-                  </ButtonLink>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* How to join */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">How to join your classes</h2>
-
-            <p className="mt-3 text-sm text-gray-600">
-              Your live class links are sent to your email after you join.
-            </p>
-
-            <p className="mt-2 text-sm text-gray-600">
-              You don’t need to sign in each time — simply open the email and join directly.
-            </p>
-
-            <p className="mt-2 text-sm text-gray-600">
-              This page is here for your schedule and membership status.
-            </p>
-          </div>
-
-          {/* Schedule */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Class schedule</h2>
-            <p className="mt-2 text-sm text-gray-600">View upcoming live classes and timings.</p>
-            <div className="mt-4">
-              <ButtonLink href="/schedule">View Schedule</ButtonLink>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Quick links</h2>
-
-            <div className="mt-4 flex flex-col gap-3">
-              <ButtonLink href="/classes" variant="secondary">
-                Classes
-              </ButtonLink>
-              <ButtonLink href="/schedule" variant="secondary">
-                Schedule
-              </ButtonLink>
-              <ButtonLink href="/contact" variant="secondary">
-                Contact
-              </ButtonLink>
-            </div>
-          </div>
+        {/* Class link card (only when access is valid) */}
+        <div className="lg:col-span-2">
+          {hasAccess && classLink ? (
+            <ClassLinkCard classLink={classLink} />
+          ) : (
+            <Card title="Your class link">
+              <p className="text-sm text-gray-600">
+                Your class link appears here once your membership is active.
+              </p>
+              <p className="mt-2 text-xs text-gray-500">
+                After checkout, you’ll also receive the class link by email.
+              </p>
+            </Card>
+          )}
         </div>
       </div>
     </main>
