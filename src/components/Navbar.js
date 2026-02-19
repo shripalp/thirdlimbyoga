@@ -38,6 +38,13 @@ export default function Navbar() {
             </Link>
           ))}
 
+          <Link
+            href="/members/login"
+            className="rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
+          >
+            Sign In
+          </Link>
+
           {/* Primary CTA stays Join Online */}
           <Link
             href="/pricing"
@@ -72,6 +79,14 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
+
+            <Link
+              href="/members/login"
+              className="text-center rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
+              onClick={() => setOpen(false)}
+            >
+              Sign In
+            </Link>
 
             <Link
               href="/pricing"
