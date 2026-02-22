@@ -3,7 +3,8 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function SuccessPage({ searchParams }) {
-  const sessionId = searchParams?.session_id;
+  const params = await Promise.resolve(searchParams);
+  const sessionId = params?.session_id;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
