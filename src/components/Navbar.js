@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 
 const links = [
   { href: "/classes", label: "Classes" },
@@ -13,6 +14,8 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { status } = useSession();
+  const showSignIn = status !== "authenticated";
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
@@ -38,12 +41,14 @@ export default function Navbar() {
             </Link>
           ))}
 
-          <Link
-            href="/members/login"
-            className="rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
-          >
-            Sign In
-          </Link>
+          {showSignIn ? (
+            <Link
+              href="/members/login"
+              className="rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
+            >
+              Sign In
+            </Link>
+          ) : null}
 
           {/* Primary CTA stays Join Online */}
           <Link
@@ -80,13 +85,15 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <Link
-              href="/members/login"
-              className="text-center rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
-              onClick={() => setOpen(false)}
-            >
-              Sign In
-            </Link>
+            {showSignIn ? (
+              <Link
+                href="/members/login"
+                className="text-center rounded-md border border-primary px-4 py-2 text-primary hover:bg-primary/5"
+                onClick={() => setOpen(false)}
+              >
+                Sign In
+              </Link>
+            ) : null}
 
             <Link
               href="/pricing"
