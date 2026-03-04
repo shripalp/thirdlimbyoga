@@ -155,7 +155,11 @@ export default async function MembersPage({ searchParams }) {
   const email = session.user.email;
   const membership = await getMembershipSummary(email);
 
-  const classLink = process.env.CLASS_JOIN_LINK || process.env.TEAMS_CLASS_LINK || null;
+  // Prefer the current Teams env var first; keep CLASS_JOIN_LINK only as legacy fallback.
+  const classLink =
+    process.env.TEAMS_CLASS_LINK?.trim() ||
+    process.env.CLASS_JOIN_LINK?.trim() ||
+    null;
   const hasAccess = membership.state === "active" || membership.state === "canceling";
 
   return (
