@@ -47,11 +47,6 @@ export async function POST() {
       // Prefill email when available (helps link Stripe to the correct member)
       customer_email: email,
 
-      payment_intent_data: {
-        description:
-          "After payment, access your Teams class link on the success page or from the Members page.",
-      },
-
       // Optional small UX upgrade
       allow_promotion_codes: true,
 
