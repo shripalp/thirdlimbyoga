@@ -1,7 +1,6 @@
 // src/auth.js
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 
@@ -19,10 +18,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   debug: process.env.NODE_ENV !== "production",
 
-  // ✅ REQUIRED for magic-link email login (stores verification tokens)
   adapter: PrismaAdapter(prisma),
 
-  // ✅ Keep JWT sessions (fast) while still using DB for email tokens
+  // Keep JWT sessions while still syncing users/accounts in Prisma.
   session: { strategy: "jwt" },
 
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
@@ -33,15 +31,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
       allowDangerousEmailAccountLinking: true,
     }),
-    Resend({
-      apiKey: process.env.RESEND_API_KEY,
-      from: process.env.EMAIL_FROM, // example: "ThirdLimb Yoga <hello@send.thirdlimbyoga.com>"
-    }),
   ],
 
   pages: {
     signIn: "/members/login",
-    verifyRequest: "/members/check-email",
     error: "/members/error",
   },
 

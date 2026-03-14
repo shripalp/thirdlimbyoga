@@ -1,6 +1,5 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -92,72 +91,7 @@ export async function POST(req) {
       }
     }
 
-    // 1) SEND EMAIL FIRST (so DB issues won't block it)
-    const shouldSendEmail =
-      process.env.SEND_CLASS_EMAIL === "true" ||
-      process.env.SEND_CLASS_EMAILS === "true";
-    const resendKey = process.env.RESEND_API_KEY;
-    const emailFrom = process.env.EMAIL_FROM;
-
-    // keep backward compatibility with your old env var name
-    const classLink = process.env.CLASS_JOIN_LINK || process.env.TEAMS_CLASS_LINK;
-
-    if (shouldSendEmail && resendKey && emailFrom && classLink && email) {
-      try {
-        const resend = new Resend(resendKey);
-        await resend.emails.send({
-          from: emailFrom,
-          to: email,
-          subject: "Your Third Limb Yoga class link 🌿",
-          html: `
-            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#111;">
-              <h2 style="margin:0 0 8px;">Welcome to Third Limb Yoga 🧘</h2>
-
-              <p style="margin:0;">Your membership is active. You’re all set for this month.</p>
-
-              <p style="margin:16px 0 0;">Use the button below to access your live classes:</p>
-
-              <p style="margin:24px 0;">
-                <a href="${classLink}" style="display:inline-block;padding:14px 20px;border-radius:10px;background-color:#111;color:#fff;text-decoration:none;font-weight:600;">
-                  Open your class link
-                </a>
-              </p>
-
-              <p style="margin:0;font-size:14px;color:#555;">
-                <strong>Tip:</strong> Save this email so you can open your class link quickly next time.
-              </p>
-
-              <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
-
-              <p style="margin:0;font-size:14px;color:#555;">
-                You don’t need to sign in each time. Simply open this email and join your class.
-              </p>
-
-              <p style="margin:16px 0 0;font-size:13px;color:#777;">
-                If the button doesn’t work, copy and paste this link into your browser:
-                <br />
-                <span style="word-break:break-all;">${classLink}</span>
-              </p>
-
-              <p style="margin:24px 0 0;font-size:13px;color:#777;">💛 Third Limb Yoga</p>
-            </div>
-          `,
-        });
-        console.log("Class link email sent to:", email);
-      } catch (mailErr) {
-        console.error("Resend email failed:", mailErr?.message || mailErr);
-      }
-    } else {
-      console.log("Email not sent (missing env/flag/email).", {
-        shouldSendEmail,
-        hasResendKey: Boolean(resendKey),
-        hasEmailFrom: Boolean(emailFrom),
-        hasClassLink: Boolean(classLink),
-        hasEmail: Boolean(email),
-      });
-    }
-
-    // 2) UPDATE DB (best effort; DO NOT block webhook if it fails)
+    // Update DB as a best effort; do not block webhook retries on DB errors.
     if (email) {
       try {
         // fetch subscription status when possible

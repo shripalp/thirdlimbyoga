@@ -17,6 +17,13 @@
   - class link (only if active)
   - manage/cancel membership (Stripe portal)
 
+## Agent behavior
+
+- Never modify Stripe webhook logic unless explicitly requested
+- Never change authentication providers unless asked
+- Prefer minimal code changes over large refactors
+- Do not introduce new dependencies unless necessary
+
 ## Dev checks after changes
 - `npm run lint` (optional)
 - `npm run build` (must pass)

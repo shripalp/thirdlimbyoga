@@ -10,8 +10,6 @@ export default function LoginClient() {
   const searchParams = useSearchParams();
   const { status } = useSession();
 
-  const [email, setEmail] = useState("");
-  const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
@@ -47,15 +45,6 @@ export default function LoginClient() {
     };
   }, [status, router, searchParams]);
 
-  async function handleEmailSubmit(e) {
-    e.preventDefault();
-    if (!email) return;
-
-    setLoadingEmail(true);
-    await signIn("resend", { email, callbackUrl: "/members/redirect" });
-    setTimeout(() => setLoadingEmail(false), 1500);
-  }
-
   async function handleGoogle() {
     setLoadingGoogle(true);
     await signIn("google", { callbackUrl: "/members/redirect" });
@@ -89,7 +78,7 @@ export default function LoginClient() {
       <button
         type="button"
         onClick={handleGoogle}
-        disabled={loadingGoogle || loadingEmail}
+        disabled={loadingGoogle}
         className="mt-8 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-60"
       >
         <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
@@ -113,51 +102,6 @@ export default function LoginClient() {
         <span>{loadingGoogle ? "Redirecting…" : "Continue with Google"}</span>
       </button>
 
-      {/* Divider */}
-      <div className="my-8 flex items-center gap-4">
-        <div className="h-px flex-1 bg-gray-200" />
-        <span className="text-xs font-semibold text-gray-500">OR</span>
-        <div className="h-px flex-1 bg-gray-200" />
-      </div>
-
-      {/* Magic link */}
-      <p className="text-gray-600">
-        Prefer email? Enter your email and we’ll send you a secure sign-in link.
-      </p>
-
-      <form onSubmit={handleEmailSubmit} className="mt-4 space-y-4">
-        <label className="block">
-          <span className="text-sm font-semibold text-gray-900">Email</span>
-          <input
-            className="mt-2 w-full rounded-xl border px-4 py-3"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={loadingEmail || loadingGoogle}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M4 4h16v16H4z" />
-            <path d="M4 6l8 7 8-7" />
-          </svg>
-          <span>{loadingEmail ? "Sending link…" : "Email me a sign-in link"}</span>
-        </button>
-      </form>
-
       <p className="mt-6 text-sm text-gray-600">
         Not a member yet?{" "}
         <Link className="font-semibold text-primary underline" href="/pricing">
@@ -166,7 +110,7 @@ export default function LoginClient() {
       </p>
 
       <p className="mt-3 text-xs text-gray-500">
-        Tip: Use the same email you used for checkout so your membership is detected.
+        Tip: Use the same Google email you used for checkout so your membership is detected.
       </p>
     </main>
   );
