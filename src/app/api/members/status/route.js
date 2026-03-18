@@ -1,6 +1,10 @@
 import Stripe from "stripe";
 import { auth } from "@/auth";
-import { getMonthlyPriceId } from "@/lib/stripe";
+import {
+  getConfiguredMonthlyPrice,
+  getMonthlyPriceId,
+  getOneTimeAccessUntil,
+} from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // important for Stripe + consistent cookie handling
@@ -29,6 +33,14 @@ export async function GET(request) {
   }
 
   try {
+    const configuredPrice = await getConfiguredMonthlyPrice(stripe);
+    if (!configuredPrice.ok) {
+      return Response.json(
+        { active: false, reason: "invalid_price", message: configuredPrice.error },
+        { status: configuredPrice.status }
+      );
+    }
+
     const customers = await stripe.customers.list({ email, limit: 1 });
     const customer = customers.data[0];
 
@@ -39,19 +51,41 @@ export async function GET(request) {
       );
     }
 
-    const subs = await stripe.subscriptions.list({
-      customer: customer.id,
-      status: "all",
-      limit: 20,
-    });
+    let hasActive = false;
 
-    const hasActive = subs.data.some((sub) => {
-      const statusOk = sub.status === "active" || sub.status === "trialing";
-      const priceMatch = sub.items.data.some(
-        (item) => item.price.id === priceId
-      );
-      return statusOk && priceMatch;
-    });
+    if (configuredPrice.price.type === "recurring") {
+      const subs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: "all",
+        limit: 20,
+      });
+
+      hasActive = subs.data.some((sub) => {
+        const statusOk = sub.status === "active" || sub.status === "trialing";
+        const priceMatch = sub.items.data.some((item) => item.price.id === priceId);
+        return statusOk && priceMatch;
+      });
+    } else {
+      const sessions = await stripe.checkout.sessions.list({
+        customer: customer.id,
+        limit: 20,
+      });
+
+      for (const session of sessions.data || []) {
+        if (session.mode !== "payment" || session.payment_status !== "paid") continue;
+        const accessUntilUnix = getOneTimeAccessUntil(session.created);
+        if (!accessUntilUnix || accessUntilUnix * 1000 < Date.now()) continue;
+
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+          limit: 20,
+        });
+        const priceMatch = (lineItems.data || []).some((item) => item.price?.id === priceId);
+        if (priceMatch) {
+          hasActive = true;
+          break;
+        }
+      }
+    }
 
     return Response.json({ active: hasActive, email }, { status: 200 });
   } catch (err) {

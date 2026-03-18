@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
+import { isCheckoutSessionActive } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -24,8 +25,7 @@ export async function GET(req) {
       expand: ["subscription"],
     });
 
-    const sub = session.subscription;
-    const active = sub && (sub.status === "active" || sub.status === "trialing");
+    const active = isCheckoutSessionActive(session);
 
     return NextResponse.json({ ok: true, active: !!active });
   } catch (err) {

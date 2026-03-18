@@ -5,7 +5,11 @@ import ManageMembershipButton from "@/components/ManageMembershipButton";
 import CancelMembershipButton from "@/components/CancelMembershipButton";
 import ClassLinkCard from "@/components/ClassLinkCard";
 import { prisma } from "@/lib/prisma";
-import { getMonthlyPriceId } from "@/lib/stripe";
+import {
+  getConfiguredMonthlyPrice,
+  getMonthlyPriceId,
+  getOneTimeAccessUntil,
+} from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,10 +38,51 @@ async function getMembershipSummary(email) {
     };
   }
 
+  const configuredPrice = await getConfiguredMonthlyPrice(stripe);
+  if (!configuredPrice.ok) {
+    return { state: "error", error: configuredPrice.error };
+  }
+
   // Find Stripe customer for this email
   const customers = await stripe.customers.list({ email, limit: 1 });
   const customer = customers.data?.[0];
   if (!customer?.id) return { state: "inactive", reason: "no_customer" };
+
+  if (configuredPrice.price.type !== "recurring") {
+    const sessions = await stripe.checkout.sessions.list({
+      customer: customer.id,
+      limit: 20,
+    });
+
+    const sortedSessions = [...(sessions.data || [])].sort(
+      (a, b) => (b.created || 0) - (a.created || 0)
+    );
+
+    for (const session of sortedSessions) {
+      if (session.mode !== "payment" || session.payment_status !== "paid") continue;
+
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+        limit: 20,
+      });
+      const hasMatchingPrice = (lineItems.data || []).some(
+        (item) => item.price?.id === priceId
+      );
+      if (!hasMatchingPrice) continue;
+
+      const accessUntilUnix = getOneTimeAccessUntil(session.created);
+      if (!accessUntilUnix || accessUntilUnix * 1000 < Date.now()) continue;
+
+      return {
+        state: "active",
+        billingMode: "one_time",
+        subscriptionStatus: "paid",
+        customerId: customer.id,
+        accessUntil: formatUnixDate(accessUntilUnix),
+      };
+    }
+
+    return { state: "inactive", reason: "no_matching_payment", customerId: customer.id };
+  }
 
   // List subs and find the one that matches our monthly price
   const subs = await stripe.subscriptions.list({
@@ -77,6 +122,7 @@ async function getMembershipSummary(email) {
 
   return {
     state: canceling ? "canceling" : "active",
+    billingMode: "subscription",
     subscriptionStatus: match.status,
     customerId: customer.id,
     subscriptionId: match.id,
@@ -225,11 +271,20 @@ export default async function MembersPage({ searchParams }) {
             <>
               <Pill tone="green">Active</Pill>
               <p className="mt-3 text-sm text-gray-700">
-                Your membership is active.
-                {membership.accessUntil ? <> Next renewal: <strong>{membership.accessUntil}</strong>.</> : null}
+                {membership.billingMode === "one_time"
+                  ? "Your monthly access is active."
+                  : "Your membership is active."}
+                {membership.accessUntil ? (
+                  <>
+                    {" "}
+                    {membership.billingMode === "one_time" ? "Active until" : "Next renewal:"}{" "}
+                    <strong>{membership.accessUntil}</strong>.
+                  </>
+                ) : null}
               </p>
 
-              {["past_due", "unpaid"].includes(membership.subscriptionStatus) ? (
+              {membership.billingMode !== "one_time" &&
+              ["past_due", "unpaid"].includes(membership.subscriptionStatus) ? (
                 <p className="mt-2 text-xs text-amber-800">
                   Payment needs attention. Please update your billing details in Manage membership.
                 </p>
@@ -237,8 +292,8 @@ export default async function MembersPage({ searchParams }) {
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <SecondaryLink href="/schedule">View schedule</SecondaryLink>
-                <ManageMembershipButton />
-                <CancelMembershipButton />
+                {membership.billingMode !== "one_time" ? <ManageMembershipButton /> : null}
+                {membership.billingMode !== "one_time" ? <CancelMembershipButton /> : null}
               </div>
             </>
           ) : membership.state === "canceling" ? (

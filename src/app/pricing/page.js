@@ -44,7 +44,7 @@ export default function PricingPage() {
     <main className="mx-auto max-w-6xl px-6 py-10">
       <h1 className="text-3xl font-bold text-primary">Pricing</h1>
       <p className="mt-3 max-w-2xl text-gray-600">
-        Simple monthly membership for live online yoga. No long-term commitment.
+        Simple monthly access for live online yoga. Pay once for the month. No auto-renew.
       </p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-3">
@@ -56,7 +56,7 @@ export default function PricingPage() {
                 Online yoga classes
               </h2>
               <p className="mt-2 text-sm text-gray-600">
-                Pay monthly. Cancel anytime from your Members area.
+                One-time payment for 30 days of access. No recurring subscription.
               </p>
             </div>
 
@@ -73,7 +73,7 @@ export default function PricingPage() {
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-gray-700">
                 <li>Access to all live online classes during your active month</li>
                 <li>Updated class schedule on the website</li>
-                <li>Manage your membership (cancel anytime)</li>
+                <li>Use the Members page to find your class link during the month</li>
               </ul>
             </div>
 
@@ -114,7 +114,7 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-3 text-xs text-gray-500">
-            By continuing, you agree to a monthly subscription. You can cancel anytime.
+            By continuing, you’re purchasing one month of access. This payment does not auto-renew.
           </p>
         </section>
 
@@ -125,8 +125,8 @@ export default function PricingPage() {
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="font-semibold text-gray-900">Cancel anytime</p>
               <p className="mt-1 text-gray-600">
-                You can cancel from the Members page. Your access continues until
-                the end of your paid period.
+                There is no recurring subscription. When your month ends, you can
+                purchase another month whenever you’re ready.
               </p>
             </div>
 
@@ -167,7 +167,7 @@ export default function PricingPage() {
           />
           <FAQItem
             q="Can I cancel anytime?"
-            a="Yes. You can cancel from the Members page. Your access continues until the end of your paid period."
+            a="There is no auto-renewal, so there is nothing to cancel. You simply buy another month when you want to continue."
           />
           <FAQItem
             q="What if I don’t see the email?"

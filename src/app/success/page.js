@@ -1,5 +1,9 @@
 import Link from "next/link";
 import Stripe from "stripe";
+import {
+  getOneTimeAccessUntil,
+  isCheckoutSessionActive,
+} from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +23,36 @@ async function getTeamsLinkForSession(sessionId) {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["subscription"],
     });
+    const active = isCheckoutSessionActive(session);
+    const accessUntilUnix =
+      session.mode === "payment" ? getOneTimeAccessUntil(session.created) : null;
 
-    const subscription = session.subscription;
-    const active =
-      subscription &&
-      (subscription.status === "active" || subscription.status === "trialing");
-
-    return { active: Boolean(active), teamsLink: active ? teamsLink : null };
+    return {
+      active,
+      teamsLink: active ? teamsLink : null,
+      mode: session.mode,
+      accessUntilUnix,
+    };
   } catch (err) {
     console.error("Success page session verification failed:", err);
-    return { active: false, teamsLink: null };
+    return { active: false, teamsLink: null, mode: null, accessUntilUnix: null };
   }
+}
+
+function formatUnixDate(unixSeconds) {
+  if (!unixSeconds) return null;
+  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 export default async function SuccessPage({ searchParams }) {
   const params = await Promise.resolve(searchParams);
   const sessionId = params?.session_id;
-  const { active, teamsLink } = await getTeamsLinkForSession(sessionId);
+  const { active, teamsLink, mode, accessUntilUnix } = await getTeamsLinkForSession(sessionId);
+  const accessUntil = formatUnixDate(accessUntilUnix);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
@@ -50,7 +67,7 @@ export default async function SuccessPage({ searchParams }) {
 
         <p className="mt-3 text-gray-600">
           Your payment was confirmed by Stripe. You can open your class link below and
-          you’ll also be able to access it from the Members page.
+          you’ll also be able to access it from the Members page during your active month.
         </p>
 
         {active && teamsLink ? (
@@ -58,7 +75,7 @@ export default async function SuccessPage({ searchParams }) {
             <p className="text-sm font-semibold text-green-900">Your Teams class link</p>
             <p className="mt-2 text-sm text-green-800">
               Bookmark this page for today, and use the Members page any time you need the
-              link again in future months.
+              link again this month.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a
@@ -93,8 +110,10 @@ export default async function SuccessPage({ searchParams }) {
           <p className="text-sm font-semibold text-gray-900">What to do next</p>
           <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-gray-700">
             <li>View the schedule any time on the website.</li>
-            <li>Use the Members page to manage or cancel your membership.</li>
-            <li>Future monthly renewals won’t return here, so use the Members page for your class link.</li>
+            {mode === "payment" && accessUntil ? (
+              <li>Your access stays active until {accessUntil}.</li>
+            ) : null}
+            <li>Use the Members page to find your class link again.</li>
             <li>Sign in with the same Google email you used for checkout.</li>
           </ul>
         </div>

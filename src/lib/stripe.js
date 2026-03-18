@@ -1,3 +1,5 @@
+const MONTH_IN_MS = 30 * 24 * 60 * 60 * 1000;
+
 export function getMonthlyPriceId() {
   return (
     process.env.STRIPE_MONTHLY_PRICE_ID?.trim() ||
@@ -6,7 +8,7 @@ export function getMonthlyPriceId() {
   );
 }
 
-export async function getValidatedRecurringMonthlyPrice(stripe) {
+export async function getConfiguredMonthlyPrice(stripe) {
   const priceId = getMonthlyPriceId();
 
   if (!priceId) {
@@ -27,15 +29,27 @@ export async function getValidatedRecurringMonthlyPrice(stripe) {
     };
   }
 
-  if (price.type !== "recurring" || !price.recurring) {
-    return {
-      ok: false,
-      status: 500,
-      error:
-        `Stripe price ${priceId} is not a recurring price. ` +
-        "Use a recurring monthly price for subscription checkout.",
-    };
+  return { ok: true, priceId, price };
+}
+
+export function getCheckoutModeForPrice(price) {
+  return price?.type === "recurring" ? "subscription" : "payment";
+}
+
+export function isCheckoutSessionActive(session) {
+  if (!session) return false;
+
+  if (session.mode === "subscription") {
+    const sub = session.subscription;
+    return Boolean(
+      sub && (sub.status === "active" || sub.status === "trialing")
+    );
   }
 
-  return { ok: true, priceId, price };
+  return session.payment_status === "paid" || session.status === "complete";
+}
+
+export function getOneTimeAccessUntil(unixSeconds) {
+  if (!unixSeconds) return null;
+  return Math.floor((unixSeconds * 1000 + MONTH_IN_MS) / 1000);
 }

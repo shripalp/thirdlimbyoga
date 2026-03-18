@@ -110,7 +110,7 @@ export async function POST(req) {
           data: {
             stripeCustomerId: customerId ?? undefined,
             stripeSubscriptionId: subscriptionId ?? undefined,
-            stripeSubscriptionStatus: subStatus ?? "active",
+            stripeSubscriptionStatus: subStatus ?? session.payment_status ?? "active",
           },
         });
       } catch (dbErr) {

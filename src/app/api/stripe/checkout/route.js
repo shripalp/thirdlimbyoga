@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getValidatedRecurringMonthlyPrice } from "@/lib/stripe";
+import { getCheckoutModeForPrice, getConfiguredMonthlyPrice } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ export async function POST() {
 
   try {
     const stripe = new Stripe(secret);
-    const monthlyPrice = await getValidatedRecurringMonthlyPrice(stripe);
+    const monthlyPrice = await getConfiguredMonthlyPrice(stripe);
 
     if (!monthlyPrice.ok) {
       return NextResponse.json(
@@ -32,6 +32,7 @@ export async function POST() {
         { status: monthlyPrice.status }
       );
     }
+    const mode = getCheckoutModeForPrice(monthlyPrice.price);
 
     // If the user is logged in, prefill Checkout with their email.
     // If not logged in, Stripe will still collect an email during Checkout.
@@ -39,7 +40,7 @@ export async function POST() {
     const email = session?.user?.email || undefined;
 
     const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "subscription",
+      mode,
       line_items: [{ price: monthlyPrice.priceId, quantity: 1 }],
 
       // Post-checkout pages
@@ -48,14 +49,17 @@ export async function POST() {
 
       // Prefill email when available (helps link Stripe to the correct member)
       customer_email: email,
+      customer_creation: mode === "payment" ? "always" : undefined,
 
       // Optional small UX upgrade
       allow_promotion_codes: true,
 
-      // Keep subscription active until user cancels
-      subscription_data: {
-        // You can add metadata here later if needed
-      },
+      subscription_data:
+        mode === "subscription"
+          ? {
+              // You can add metadata here later if needed
+            }
+          : undefined,
     });
 
     return NextResponse.json({ ok: true, url: checkoutSession.url });
