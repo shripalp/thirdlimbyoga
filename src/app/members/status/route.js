@@ -1,11 +1,13 @@
 import Stripe from "stripe";
 import { auth } from "@/auth";
+import { getMonthlyPriceId } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function GET() {
+  const priceId = getMonthlyPriceId();
   const session = await auth();
   const email = session?.user?.email;
 
@@ -13,7 +15,7 @@ export async function GET() {
     return Response.json({ active: false, reason: "not_logged_in" }, { status: 200 });
   }
 
-  if (!process.env.STRIPE_PRICE_ID) {
+  if (!priceId) {
     return Response.json({ active: false, reason: "missing_price_id" }, { status: 500 });
   }
 
@@ -35,7 +37,7 @@ export async function GET() {
 
     const hasActive = subs.data.some((s) => {
       const statusOk = s.status === "active" || s.status === "trialing"; //  [oai_citation:5‡Stripe Docs](https://docs.stripe.com/api/subscriptions/object?utm_source=chatgpt.com)
-      const matchesPrice = (s.items?.data || []).some((it) => it.price?.id === process.env.STRIPE_PRICE_ID);
+      const matchesPrice = (s.items?.data || []).some((it) => it.price?.id === priceId);
       return statusOk && matchesPrice;
     });
 

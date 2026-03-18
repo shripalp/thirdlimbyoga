@@ -1,23 +1,17 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { getValidatedRecurringMonthlyPrice } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
 export async function POST() {
   const secret = process.env.STRIPE_SECRET_KEY;
-  const priceId = process.env.STRIPE_PRICE_ID;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
   if (!secret) {
     return NextResponse.json(
       { ok: false, error: "Missing STRIPE_SECRET_KEY" },
-      { status: 500 }
-    );
-  }
-  if (!priceId) {
-    return NextResponse.json(
-      { ok: false, error: "Missing STRIPE_PRICE_ID" },
       { status: 500 }
     );
   }
@@ -30,6 +24,14 @@ export async function POST() {
 
   try {
     const stripe = new Stripe(secret);
+    const monthlyPrice = await getValidatedRecurringMonthlyPrice(stripe);
+
+    if (!monthlyPrice.ok) {
+      return NextResponse.json(
+        { ok: false, error: monthlyPrice.error },
+        { status: monthlyPrice.status }
+      );
+    }
 
     // If the user is logged in, prefill Checkout with their email.
     // If not logged in, Stripe will still collect an email during Checkout.
@@ -38,7 +40,7 @@ export async function POST() {
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: monthlyPrice.priceId, quantity: 1 }],
 
       // Post-checkout pages
       success_url: `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,

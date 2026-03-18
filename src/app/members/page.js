@@ -5,6 +5,7 @@ import ManageMembershipButton from "@/components/ManageMembershipButton";
 import CancelMembershipButton from "@/components/CancelMembershipButton";
 import ClassLinkCard from "@/components/ClassLinkCard";
 import { prisma } from "@/lib/prisma";
+import { getMonthlyPriceId } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -23,10 +24,15 @@ function formatUnixDate(unixSeconds) {
 
 async function getMembershipSummary(email) {
   const stripe = getStripeClient();
-  const priceId = process.env.STRIPE_PRICE_ID;
+  const priceId = getMonthlyPriceId();
 
   if (!stripe) return { state: "error", error: "Missing STRIPE_SECRET_KEY" };
-  if (!priceId) return { state: "error", error: "Missing STRIPE_PRICE_ID" };
+  if (!priceId) {
+    return {
+      state: "error",
+      error: "Missing STRIPE_MONTHLY_PRICE_ID or STRIPE_PRICE_ID",
+    };
+  }
 
   // Find Stripe customer for this email
   const customers = await stripe.customers.list({ email, limit: 1 });

@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { auth } from "@/auth";
+import { getMonthlyPriceId } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // important for Stripe + consistent cookie handling
@@ -7,6 +8,8 @@ export const runtime = "nodejs"; // important for Stripe + consistent cookie han
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function GET(request) {
+  const priceId = getMonthlyPriceId();
+
   // ✅ pass request so auth can read cookies in route handlers
   const session = await auth(request);
   const email = session?.user?.email;
@@ -15,6 +18,13 @@ export async function GET(request) {
     return Response.json(
       { active: false, reason: "not_logged_in" },
       { status: 200 }
+    );
+  }
+
+  if (!priceId) {
+    return Response.json(
+      { active: false, reason: "missing_price_id" },
+      { status: 500 }
     );
   }
 
@@ -38,7 +48,7 @@ export async function GET(request) {
     const hasActive = subs.data.some((sub) => {
       const statusOk = sub.status === "active" || sub.status === "trialing";
       const priceMatch = sub.items.data.some(
-        (item) => item.price.id === process.env.STRIPE_PRICE_ID
+        (item) => item.price.id === priceId
       );
       return statusOk && priceMatch;
     });
